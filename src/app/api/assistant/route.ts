@@ -102,16 +102,20 @@ type StackItemLike = {
 
 function buildSystemPrompt(profile: ProfileLike, stackItems: StackItemLike[]): string {
   const lines: string[] = [
-    "You are the PeptideStack AI assistant, a knowledgeable peptide-coaching guide embedded in a peptide-tracking app.",
-    "You provide educational, harm-reduction-oriented information about peptide protocols, dosing conventions, and stacking.",
-    "You are not a doctor and must consistently recommend that the user consult a licensed healthcare provider before starting, stopping, or changing any protocol.",
-    "Be concise, practical, and grounded in the user's actual profile and stack data provided below. Do not invent data about the user.",
+    "You are an educational research assistant embedded in a peptide/GLP-1 tracking app. Answer general, factual questions about peptides, GLP-1/GIP agonists, growth secretagogues, and recovery compounds: mechanisms of action, half-lives, research status, and general literature context.",
+    "Hard rules:",
+    "- Never give a specific dosing recommendation (amounts, schedules, titration) for the person asking.",
+    "- Never tell the person what to take, skip, increase, decrease, or combine for their own protocol.",
+    "- Never interpret or diagnose a symptom the person describes.",
+    "- If asked for any of the above, briefly decline and suggest they discuss it with a licensed provider, then still offer relevant general/educational context if there is any.",
+    "- Keep answers concise (under 150 words), neutral, and clearly framed as general research information, not medical advice.",
+    "- Do not invent facts about the user; only reference the profile/stack data given below if relevant to the question.",
   ];
 
   if (profile) {
     lines.push(
       "",
-      "USER PROFILE:",
+      "USER PROFILE (context only, not for dosing advice):",
       `- Goals: ${profile.goals.join(", ") || "none set"}`,
       `- Weight: ${profile.weightKg} kg, Height: ${profile.heightCm} cm, Age: ${profile.age}, Sex: ${profile.sex}`,
       `- Experience level: ${profile.experienceLevel}`,
@@ -121,7 +125,7 @@ function buildSystemPrompt(profile: ProfileLike, stackItems: StackItemLike[]): s
   }
 
   if (stackItems.length > 0) {
-    lines.push("", "CURRENT STACK:");
+    lines.push("", "CURRENT STACK (context only, not for dosing advice):");
     for (const item of stackItems) {
       lines.push(
         `- ${item.peptide.name} (${item.status}), typical frequency ${item.peptide.frequency}, typical cycle ${item.peptide.cycleWeeksMin}-${item.peptide.cycleWeeksMax} weeks`,

@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { recommendPeptides } from "@/lib/recommend";
 import { analyzeStack } from "@/lib/stackAnalysis";
+import { findInteractions } from "@/lib/interactions";
 import AddToStackClientButton from "@/components/AddToStackClientButton";
 
 export default async function DashboardPage() {
@@ -28,6 +29,10 @@ export default async function DashboardPage() {
   const recommendations = recommendPeptides(profile, catalog).slice(0, 5);
   const inStackIds = new Set(stackItems.map((s) => s.peptideId));
   const { flags, gaps } = analyzeStack(profile, stackItems, catalog);
+  const activeSlugs = stackItems
+    .filter((s) => s.status === "ACTIVE")
+    .map((s) => s.peptide.slug);
+  const interactions = findInteractions(activeSlugs);
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -40,6 +45,22 @@ export default async function DashboardPage() {
           Edit profile
         </Link>
       </div>
+
+      {interactions.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold text-white">Combination notes</h2>
+          <div className="mt-3 grid gap-3">
+            {interactions.map((n, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm text-amber-200"
+              >
+                {n.note}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {flags.length > 0 && (
         <section className="mt-8">

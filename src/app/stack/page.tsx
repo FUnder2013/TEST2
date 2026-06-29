@@ -10,17 +10,27 @@ export default async function StackPage() {
     redirect("/login");
   }
 
-  const [stackItems, catalog] = await Promise.all([
+  const [stackItems, catalog, approvedConsults] = await Promise.all([
     prisma.stackItem.findMany({
       where: { userId: session.user.id },
       include: { peptide: true, doseLogs: { orderBy: { takenAt: "desc" } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.peptide.findMany({ orderBy: { name: "asc" } }),
+    prisma.consultRequest.findMany({
+      where: { userId: session.user.id, status: "APPROVED" },
+      select: { peptideId: true },
+    }),
   ]);
 
   const inStackIds = new Set(stackItems.map((s) => s.peptideId));
-  const available = catalog.filter((p) => !inStackIds.has(p.id));
+  const approvedRxIds = new Set(approvedConsults.map((c) => c.peptideId));
+  const available = catalog.filter(
+    (p) => !inStackIds.has(p.id) && (!p.isRx || approvedRxIds.has(p.id)),
+  );
+  const lockedRx = catalog.filter(
+    (p) => !inStackIds.has(p.id) && p.isRx && !approvedRxIds.has(p.id),
+  );
 
   const serializedItems = stackItems.map((item) => ({
     id: item.id,
@@ -69,6 +79,28 @@ export default async function StackPage() {
           peptides={available.map((p) => ({ id: p.id, name: p.name, category: p.category }))}
         />
       </div>
+
+      {lockedRx.length > 0 && (
+        <div className="mt-10 rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5">
+          <h2 className="text-lg font-semibold text-white">Prescription peptides</h2>
+          <p className="mt-1 text-sm text-amber-200/80">
+            These require a provider consult before they can be added to your stack.
+          </p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {lockedRx.map((p) => (
+              <li key={p.id} className="flex items-center justify-between text-sm text-gray-300">
+                <span>{p.name}</span>
+                <a
+                  href={`/library?consult=${p.id}`}
+                  className="rounded-full border border-amber-400/40 px-3 py-1 text-xs font-semibold text-amber-300 hover:border-amber-400"
+                >
+                  Request consult
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 
 const createSchema = z.object({
   peptideId: z.string().min(1),
-  status: z.enum(["ACTIVE", "PLANNED", "STOPPED"]).default("PLANNED"),
+  reason: z.string().min(1).max(2000),
+  history: z.string().max(2000).optional(),
 });
 
 export async function GET() {
@@ -14,13 +15,13 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
-  const stackItems = await prisma.stackItem.findMany({
+  const consultRequests = await prisma.consultRequest.findMany({
     where: { userId: session.user.id },
-    include: { peptide: true, doseLogs: { orderBy: { takenAt: "desc" } } },
+    include: { peptide: true },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ stackItems });
+  return NextResponse.json({ consultRequests });
 }
 
 export async function POST(req: NextRequest) {
@@ -44,34 +45,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const peptide = await prisma.peptide.findUnique({
-    where: { id: parsed.data.peptideId },
-  });
+  const peptide = await prisma.peptide.findUnique({ where: { id: parsed.data.peptideId } });
   if (!peptide) {
     return NextResponse.json({ error: "Peptide not found." }, { status: 404 });
   }
-
-  if (peptide.isRx) {
-    const approvedConsult = await prisma.consultRequest.findFirst({
-      where: { userId: session.user.id, peptideId: peptide.id, status: "APPROVED" },
-    });
-    if (!approvedConsult) {
-      return NextResponse.json(
-        { error: `${peptide.name} requires an approved provider consult before it can be added to your stack.` },
-        { status: 403 },
-      );
-    }
+  if (!peptide.isRx) {
+    return NextResponse.json(
+      { error: "This peptide does not require a provider consult." },
+      { status: 400 },
+    );
   }
 
-  const stackItem = await prisma.stackItem.create({
+  const consultRequest = await prisma.consultRequest.create({
     data: {
       userId: session.user.id,
-      peptideId: parsed.data.peptideId,
-      status: parsed.data.status,
-      startedAt: parsed.data.status === "ACTIVE" ? new Date() : null,
+      peptideId: peptide.id,
+      reason: parsed.data.reason,
+      history: parsed.data.history,
     },
-    include: { peptide: true, doseLogs: true },
+    include: { peptide: true },
   });
 
-  return NextResponse.json({ stackItem }, { status: 201 });
+  return NextResponse.json({ consultRequest }, { status: 201 });
 }

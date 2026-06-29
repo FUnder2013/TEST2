@@ -22,6 +22,12 @@ model User {
   profile   Profile?
   stackItems StackItem[]
   orders    Order[]
+  consultRequests ConsultRequest[]
+  foodLogs       FoodLog[]
+  weightLogs     WeightLog[]
+  sleepLogs      SleepLog[]
+  hydrationLogs  HydrationLog[]
+  sideEffectLogs SideEffectLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -129,9 +135,33 @@ model Peptide {
   cycleWeeksMin   Int
   cycleWeeksMax   Int
   cautions        String
+  isRx            Boolean         @default(false)
+  halfLifeHours   Float?
+  researchStatus  String?
 
-  stackItems StackItem[]
-  products   Product[]
+  stackItems      StackItem[]
+  products        Product[]
+  consultRequests ConsultRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ConsultRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+model ConsultRequest {
+  id        String                @id @default(cuid())
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  peptideId String
+  peptide   Peptide               @relation(fields: [peptideId], references: [id])
+  reason    String
+  history   String?
+  status    ConsultRequestStatus  @default(PENDING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -167,7 +197,67 @@ model DoseLog {
   takenAt     DateTime
   amount      Float
   unit        String
+  site        String?
   note        String?
+
+  createdAt DateTime @default(now())
+}
+
+model FoodLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  calories  Float
+  proteinG  Float
+  carbsG    Float
+  fatG      Float
+  loggedAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+}
+
+model WeightLog {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  valueKg  Float
+  loggedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+}
+
+model SleepLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bedTime   String
+  wakeTime  String
+  hours     Float
+  quality   Int
+  loggedAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+}
+
+model HydrationLog {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ounces   Float
+  loggedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+}
+
+model SideEffectLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  symptom   String
+  severity  Int
+  note      String?
+  loggedAt  DateTime @default(now())
 
   createdAt DateTime @default(now())
 }

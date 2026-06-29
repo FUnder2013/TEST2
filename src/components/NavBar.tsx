@@ -21,8 +21,14 @@ export default async function NavBar() {
           <Link href="/shop" className="hover:text-white">
             Shop
           </Link>
+          <Link href="/library" className="hover:text-white">
+            Library
+          </Link>
           <Link href="/assistant" className="hover:text-white">
             AI Assistant
+          </Link>
+          <Link href="/settings" className="hover:text-white">
+            Settings
           </Link>
         </div>
         <div className="flex items-center gap-3">
