@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- NextAuth (Auth.js) models ---
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+
+  accounts  Account[]
+  sessions  Session[]
+  profile   Profile?
+  stackItems StackItem[]
+  orders    Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- Domain models ---
+
+enum Sex {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum Goal {
+  FAT_LOSS
+  MUSCLE_GAIN
+  LONGEVITY
+  RECOVERY
+  SKIN_HAIR
+  COGNITIVE
+  LIBIDO
+  SLEEP
+  INJURY_REPAIR
+  GENERAL_WELLNESS
+}
+
+model Profile {
+  id               String          @id @default(cuid())
+  userId           String          @unique
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goals            Goal[]
+  weightKg         Float
+  heightCm         Float
+  age              Int
+  sex              Sex
+  experienceLevel  ExperienceLevel
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum PeptideCategory {
+  HEALING_RECOVERY
+  WEIGHT_LOSS
+  GROWTH_HORMONE
+  LONGEVITY
+  COSMETIC
+  SEXUAL_HEALTH
+  COGNITIVE
+}
+
+model Peptide {
+  id              String          @id @default(cuid())
+  name            String          @unique
+  slug            String          @unique
+  category        PeptideCategory
+  goals           Goal[]
+  description     String
+  typicalDoseMin  Float
+  typicalDoseMax  Float
+  doseUnit        String
+  frequency       String
+  cycleWeeksMin   Int
+  cycleWeeksMax   Int
+  cautions        String
+
+  stackItems StackItem[]
+  products   Product[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum StackItemStatus {
+  ACTIVE
+  PLANNED
+  STOPPED
+}
+
+model StackItem {
+  id        String          @id @default(cuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  peptideId String
+  peptide   Peptide         @relation(fields: [peptideId], references: [id])
+  status    StackItemStatus @default(PLANNED)
+  startedAt DateTime?
+  stoppedAt DateTime?
+  notes     String?
+
+  doseLogs DoseLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model DoseLog {
+  id          String    @id @default(cuid())
+  stackItemId String
+  stackItem   StackItem @relation(fields: [stackItemId], references: [id], onDelete: Cascade)
+  takenAt     DateTime
+  amount      Float
+  unit        String
+  note        String?
+
+  createdAt DateTime @default(now())
+}
+
+model Product {
+  id                          String   @id @default(cuid())
+  name                        String
+  slug                        String   @unique
+  description                 String
+  imageUrl                    String?
+  peptideId                   String?
+  peptide                     Peptide? @relation(fields: [peptideId], references: [id])
+  priceOneTimeCents           Int
+  stripePriceIdOneTime        String?
+  stripePriceIdSubscription   String?
+  active                      Boolean  @default(true)
+
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeSessionId String      @unique
+  status          OrderStatus @default(PENDING)
+  mode            String
+  amountTotal     Int?
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1)
+  isSubscription Boolean @default(false)
+}
